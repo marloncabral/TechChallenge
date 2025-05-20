@@ -695,8 +695,8 @@ def main():
         st.markdown("### 🔎 Dashboard Interativo do Power BI")
         components.iframe(
         src="https://app.powerbi.com/view?r=eyJrIjoiNDk4NjRhYTMtMjUyOC00YTBmLWJlZTEtYThmNzFkMDlmMjlkIiwidCI6ImQzNjQ4ZmUxLWRiMjEtNGRhMy1hMTY1LTQ2NjkyMTMyN2E4ZSJ9",
-        width=1000,
-        height=600,
+        width=1280,
+        height=720,
         scrolling=True
     )
         
