@@ -11,6 +11,7 @@ import markdown
 from PIL import Image
 import joblib
 import tensorflow as tf
+import streamlit.components.v1 as components
 from tensorflow.keras.models import load_model
 
 # Configuração da página
@@ -689,6 +690,15 @@ def main():
     elif pagina == "Análise Histórica":
         # Título da página
         st.title("📊 Análise Histórica do Preço do Petróleo Brent")
+
+        # Inserção do BI embedado via iframe
+        st.markdown("### 🔎 Dashboard Interativo do Power BI")
+        components.iframe(
+        src="https://app.powerbi.com/view?r=eyJrIjoiNDk4NjRhYTMtMjUyOC00YTBmLWJlZTEtYThmNzFkMDlmMjlkIiwidCI6ImQzNjQ4ZmUxLWRiMjEtNGRhMy1hMTY1LTQ2NjkyMTMyN2E4ZSJ9",
+        width=1000,
+        height=600,
+        scrolling=True
+    )
         
         # Gráfico principal - Série temporal com eventos
         mostrar_previsoes = st.checkbox("Mostrar previsões futuras", value=False)
