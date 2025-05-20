@@ -1180,12 +1180,11 @@ def main():
         st.dataframe(df_previsoes_display)
 
         # Título acima do link
-        st.subheader("Notebook utilizado incialmente como teste de previsão")
+        st.subheader("Notebook utilizado inicialmente como teste de previsão")
 
-        # Adicionar link para o notebook no GitHub
         st.markdown(
-        "[🔗 Acesse o notebook completo no GitHub](https://github.com/marloncabral/TechChallenge/blob/main/Tech_Challenge_4_An%C3%A1lise_Petr%C3%B3leo_P_Github.ipynb)"
-)
+        "[🔗 Acesse o notebook completo no GitHub](https://github.com/marloncabral/TechChallenge/blob/main/Tech_Challenge_4_Análise_Petróleo_P_Github.ipynb)"
+    )
     
     elif pagina == "Documentação do Modelo":
         # Título da página
