@@ -996,7 +996,7 @@ def main():
             5. **Aumento médio** de 80-120% nos preços do início ao pico
             """)
     
-elif pagina == "Previsão":
+        elif pagina == "Previsão":
     st.title("🔮 Previsão do Preço do Petróleo Brent")
 
     # Exibir métricas e carregar modelo
@@ -1074,7 +1074,7 @@ elif pagina == "Previsão":
         unsafe_allow_html=True
     )
 
-    elif pagina == "Documentação do Modelo":
+        elif pagina == "Documentação do Modelo":
         # Título da página
         st.title("📄 Documentação do Modelo de Previsão")
         
