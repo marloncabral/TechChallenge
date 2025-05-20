@@ -996,197 +996,84 @@ def main():
             5. **Aumento médio** de 80-120% nos preços do início ao pico
             """)
     
-    elif pagina == "Previsão":
-        # Título da página
-        st.title("🔮 Previsão do Preço do Petróleo Brent")
-        
-        # Exibir previsões futuras
-        st.markdown("### Previsões para os Próximos 30 Dias")
-        
-        # Gráfico de previsões
-        # Obter os últimos 60 dias de dados históricos
-        df_ultimos_dias = df.sort_values('Data').tail(60)
-        
-        # Criar figura
-        fig = go.Figure()
-        
-        # Adicionar dados históricos
-        fig.add_trace(
-            go.Scatter(
-                x=df_ultimos_dias['Data'],
-                y=df_ultimos_dias['Preco'],
-                mode='lines',
-                name='Histórico',
-                line=dict(color='#1f77b4', width=2)
-            )
-        )
-        
-        # Adicionar previsões
-        fig.add_trace(
-            go.Scatter(
-                x=df_previsoes['Data'],
-                y=df_previsoes['Preco_Previsto'],
-                mode='lines',
-                name='Previsão',
-                line=dict(color='#ff7f0e', width=2, dash='dash')
-            )
-        )
-        
-        # Adicionar intervalo de confiança (simulado)
-        # Aqui estamos simulando um intervalo de confiança de 95% com base no RMSE
-        rmse = modelo_artefatos['parametros']['metricas']['rmse_geral']
-        margem_erro = 1.96 * rmse  # 95% de intervalo de confiança
-        
-        fig.add_trace(
-            go.Scatter(
-                x=df_previsoes['Data'].tolist() + df_previsoes['Data'].tolist()[::-1],
-                y=(df_previsoes['Preco_Previsto'] + margem_erro).tolist() + (df_previsoes['Preco_Previsto'] - margem_erro).tolist()[::-1],
-                fill='toself',
-                fillcolor='rgba(255, 127, 14, 0.2)',
-                line=dict(color='rgba(255, 127, 14, 0)'),
-                name='Intervalo de Confiança (95%)'
-            )
-        )
-        
-        # Adicionar linha vertical para separar histórico e previsão
-        fig.add_vline(
-            x=df['Data'].max(),
-            line=dict(color='gray', width=1, dash='dash'),
-            opacity=0.7
-        )
-        
-        # Configurar layout
-        fig.update_layout(
-            title='Previsão do Preço do Petróleo Brent para os Próximos 30 Dias',
-            xaxis_title='Data',
-            yaxis_title='Preço (USD)',
-            hovermode='x unified',
-            legend=dict(orientation='h', yanchor='bottom', y=1.02, xanchor='right', x=1),
-            height=500
-        )
-        
-        st.plotly_chart(fig, use_container_width=True)
-        
-        # Exibir tabela de previsões
-        col1, col2 = st.columns([1, 2])
-        
-        with col1:
-            st.markdown("### Tabela de Previsões")
-            df_previsoes_display = df_previsoes.copy()
-            df_previsoes_display['Data'] = df_previsoes_display['Data'].dt.strftime('%d/%m/%Y')
-            df_previsoes_display['Preco_Previsto'] = df_previsoes_display['Preco_Previsto'].round(2)
-            df_previsoes_display = df_previsoes_display.rename(columns={'Data': 'Data', 'Preco_Previsto': 'Preço Previsto (USD)'})
-            st.dataframe(df_previsoes_display)
-        
-        with col2:
-            st.write("Visualização das previsões em formato gráfico")
-            
-    elif pagina == "Previsão":
-        # Título da página
-        st.title("🔮 Previsão do Preço do Petróleo Brent")
-        st.markdown("### Modelo de Machine Learning para Previsão de Preços")
-        
-        # Carregar as métricas e previsões pré-calculadas
-        modelo_artefatos = carregar_modelo()
-        
-        # Exibir métricas de performance do modelo
-        st.subheader("Performance do Modelo")
-        
-        col1, col2, col3, col4 = st.columns(4)
-        with col1:
-            st.metric("RMSE", f"${modelo_artefatos['parametros']['metricas']['rmse_geral']:.2f}")
-        with col2:
-            st.metric("MAE", f"${modelo_artefatos['parametros']['metricas']['mae_geral']:.2f}")
-        with col3:
-            st.metric("MAPE", f"{modelo_artefatos['parametros']['metricas']['mape_geral']:.2f}%")
-        with col4:
-            st.metric("R²", f"{modelo_artefatos['parametros']['metricas']['r2_geral']:.4f}")
-        
-        st.markdown("""
-        ### Interpretação das Métricas
-        
-        - **RMSE (Erro Quadrático Médio)**: Representa o desvio padrão dos erros de previsão. Quanto menor, melhor.
-        - **MAE (Erro Absoluto Médio)**: Representa a média dos erros absolutos. Mais robusto a outliers que o RMSE.
-        - **MAPE (Erro Percentual Absoluto Médio)**: Representa o erro médio em termos percentuais, facilitando a interpretação.
-        - **R² (Coeficiente de Determinação)**: Indica quanto da variância dos dados é explicada pelo modelo. Varia de 0 a 1, sendo 1 o melhor valor.
-        
-        O modelo apresenta boa performance, especialmente para horizontes de curto prazo (1-7 dias), com MAPE abaixo de 6%.
-        Para horizontes mais longos (21-30 dias), a precisão diminui, com MAPE chegando a 11%, o que ainda é considerado bom para previsões de preço de commodities.
-        """)
-        
-        # Exibir previsões
-        st.subheader("Previsões para os Próximos 30 Dias")
-        
-        # Criar DataFrame com as previsões
-        datas_previsao = modelo_artefatos['parametros']['previsoes']['datas']
-        valores_previsao = modelo_artefatos['parametros']['previsoes']['valores']
-        limite_superior = modelo_artefatos['parametros']['previsoes']['intervalos_confianca']['superior']
-        limite_inferior = modelo_artefatos['parametros']['previsoes']['intervalos_confianca']['inferior']
-        
-        df_previsoes = pd.DataFrame({
-            'Data': datas_previsao,
-            'Previsão': valores_previsao,
-            'Limite Superior': limite_superior,
-            'Limite Inferior': limite_inferior
-        })
-        
-        # Exibir gráfico de previsões
-        fig = go.Figure()
-        
-        # Adicionar linha de previsão
-        fig.add_trace(
-            go.Scatter(
-                x=df_previsoes['Data'],
-                y=df_previsoes['Previsão'],
-                mode='lines',
-                name='Previsão',
-                line=dict(color='#1f77b4', width=2)
-            )
-        )
-        
-        # Adicionar intervalo de confiança
-        fig.add_trace(
-            go.Scatter(
-                x=df_previsoes['Data'].tolist() + df_previsoes['Data'].tolist()[::-1],
-                y=df_previsoes['Limite Superior'].tolist() + df_previsoes['Limite Inferior'].tolist()[::-1],
-                fill='toself',
-                fillcolor='rgba(0,176,246,0.2)',
-                line=dict(color='rgba(255,255,255,0)'),
-                name='Intervalo de Confiança (95%)'
-            )
-        )
-        
-        # Configurar layout do gráfico
-        fig.update_layout(
-            title='Previsão do Preço do Petróleo Brent para os Próximos 30 Dias',
-            xaxis_title='Data',
-            yaxis_title='Preço (USD)',
-            hovermode='x unified',
-            height=500
-        )
-        
-        st.plotly_chart(fig, use_container_width=True)
-        
-        # Exibir tabela de previsões
-        st.subheader("Tabela de Previsões")
-        
-        # Formatar DataFrame para exibição
-        df_previsoes_display = df_previsoes.copy()
-        df_previsoes_display['Data'] = df_previsoes_display['Data'].dt.strftime('%d/%m/%Y')
-        df_previsoes_display['Previsão'] = df_previsoes_display['Previsão'].apply(lambda x: f"${x:.2f}")
-        df_previsoes_display['Limite Superior'] = df_previsoes_display['Limite Superior'].apply(lambda x: f"${x:.2f}")
-        df_previsoes_display['Limite Inferior'] = df_previsoes_display['Limite Inferior'].apply(lambda x: f"${x:.2f}")
-        
-        st.dataframe(df_previsoes_display)
+elif pagina == "Previsão":
+    st.title("🔮 Previsão do Preço do Petróleo Brent")
 
-        # Título acima do link
-        st.subheader("Notebook utilizado inicialmente como teste de previsão")
+    # Exibir métricas e carregar modelo
+    modelo_artefatos = carregar_modelo()
 
-        st.markdown(
-        '<a href="https://github.com/marloncabral/TechChallenge/blob/main/Tech_Challenge_4_Análise_Petróleo_P_Github.ipynb" target="_blank">🔗 Acesse o notebook completo no GitHub</a>',
+    st.subheader("Performance do Modelo")
+    col1, col2, col3, col4 = st.columns(4)
+    with col1:
+        st.metric("RMSE", f"${modelo_artefatos['parametros']['metricas']['rmse_geral']:.2f}")
+    with col2:
+        st.metric("MAE", f"${modelo_artefatos['parametros']['metricas']['mae_geral']:.2f}")
+    with col3:
+        st.metric("MAPE", f"{modelo_artefatos['parametros']['metricas']['mape_geral']:.2f}%")
+    with col4:
+        st.metric("R²", f"{modelo_artefatos['parametros']['metricas']['r2_geral']:.4f}")
+
+    st.markdown("""
+    ### Interpretação das Métricas
+    - **RMSE**: Desvio padrão dos erros de previsão. Quanto menor, melhor.
+    - **MAE**: Média dos erros absolutos.
+    - **MAPE**: Erro percentual médio.
+    - **R²**: Variância explicada pelo modelo.
+    """)
+
+    # Exibir gráfico com previsões
+    st.markdown("### Previsões para os Próximos 30 Dias")
+
+    datas_previsao = modelo_artefatos['parametros']['previsoes']['datas']
+    valores_previsao = modelo_artefatos['parametros']['previsoes']['valores']
+    limite_superior = modelo_artefatos['parametros']['previsoes']['intervalos_confianca']['superior']
+    limite_inferior = modelo_artefatos['parametros']['previsoes']['intervalos_confianca']['inferior']
+
+    df_previsoes = pd.DataFrame({
+        'Data': datas_previsao,
+        'Previsão': valores_previsao,
+        'Limite Superior': limite_superior,
+        'Limite Inferior': limite_inferior
+    })
+
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(
+        x=df_previsoes['Data'], y=df_previsoes['Previsão'],
+        mode='lines', name='Previsão', line=dict(color='#1f77b4', width=2)
+    ))
+    fig.add_trace(go.Scatter(
+        x=df_previsoes['Data'].tolist() + df_previsoes['Data'].tolist()[::-1],
+        y=df_previsoes['Limite Superior'].tolist() + df_previsoes['Limite Inferior'].tolist()[::-1],
+        fill='toself',
+        fillcolor='rgba(0,176,246,0.2)',
+        line=dict(color='rgba(255,255,255,0)'),
+        name='Intervalo de Confiança (95%)'
+    ))
+    fig.update_layout(
+        title='Previsão do Preço do Petróleo Brent para os Próximos 30 Dias',
+        xaxis_title='Data',
+        yaxis_title='Preço (USD)',
+        hovermode='x unified',
+        height=500
+    )
+    st.plotly_chart(fig, use_container_width=True)
+
+    # Exibir tabela
+    st.subheader("Tabela de Previsões")
+    df_previsoes_display = df_previsoes.copy()
+    df_previsoes_display['Data'] = df_previsoes_display['Data'].dt.strftime('%d/%m/%Y')
+    df_previsoes_display['Previsão'] = df_previsoes_display['Previsão'].apply(lambda x: f"${x:.2f}")
+    df_previsoes_display['Limite Superior'] = df_previsoes_display['Limite Superior'].apply(lambda x: f"${x:.2f}")
+    df_previsoes_display['Limite Inferior'] = df_previsoes_display['Limite Inferior'].apply(lambda x: f"${x:.2f}")
+    st.dataframe(df_previsoes_display)
+
+    # Link para notebook no GitHub
+    st.subheader("Notebook utilizado inicialmente como teste de previsão")
+    st.markdown(
+        '<a href="https://github.com/marloncabral/TechChallenge/blob/main/Tech_Challenge_4_An%C3%A1lise_Petr%C3%B3leo_P_Github.ipynb" target="_blank" rel="noopener noreferrer">🔗 Acesse o notebook completo no GitHub</a>',
         unsafe_allow_html=True
-)
-    
+    )
+
     elif pagina == "Documentação do Modelo":
         # Título da página
         st.title("📄 Documentação do Modelo de Previsão")
