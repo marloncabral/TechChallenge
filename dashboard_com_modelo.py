@@ -997,23 +997,23 @@ def main():
             """)
     
         elif pagina == "Previsão":
-        st.title("🔮 Previsão do Preço do Petróleo Brent")
+            st.title("🔮 Previsão do Preço do Petróleo Brent")
 
-        # Exibir métricas e carregar modelo
-        modelo_artefatos = carregar_modelo()
+            # Exibir métricas e carregar modelo
+            modelo_artefatos = carregar_modelo()
 
-        st.subheader("Performance do Modelo")
-        col1, col2, col3, col4 = st.columns(4)
-        with col1:
-        st.metric("RMSE", f"${modelo_artefatos['parametros']['metricas']['rmse_geral']:.2f}")
-        with col2:
-        st.metric("MAE", f"${modelo_artefatos['parametros']['metricas']['mae_geral']:.2f}")
-        with col3:
-        st.metric("MAPE", f"{modelo_artefatos['parametros']['metricas']['mape_geral']:.2f}%")
-        with col4:
-        st.metric("R²", f"{modelo_artefatos['parametros']['metricas']['r2_geral']:.4f}")
+            st.subheader("Performance do Modelo")
+            col1, col2, col3, col4 = st.columns(4)
+            with col1:
+            st.metric("RMSE", f"${modelo_artefatos['parametros']['metricas']['rmse_geral']:.2f}")
+            with col2:
+            st.metric("MAE", f"${modelo_artefatos['parametros']['metricas']['mae_geral']:.2f}")
+            with col3:
+            st.metric("MAPE", f"{modelo_artefatos['parametros']['metricas']['mape_geral']:.2f}%")
+            with col4:
+            st.metric("R²", f"{modelo_artefatos['parametros']['metricas']['r2_geral']:.4f}")
 
-        st.markdown("""
+            st.markdown("""
     ### Interpretação das Métricas
     - **RMSE**: Desvio padrão dos erros de previsão. Quanto menor, melhor.
     - **MAE**: Média dos erros absolutos.
@@ -1022,7 +1022,7 @@ def main():
     """)
 
     # Exibir gráfico com previsões
-        st.markdown("### Previsões para os Próximos 30 Dias")
+            st.markdown("### Previsões para os Próximos 30 Dias")
 
     datas_previsao = modelo_artefatos['parametros']['previsoes']['datas']
     valores_previsao = modelo_artefatos['parametros']['previsoes']['valores']
