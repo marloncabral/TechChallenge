@@ -45,6 +45,9 @@ def carregar_eventos():
         st.error(f"Erro ao carregar os eventos: {e}")
         return None
 
+# A função carregar_previsoes() original carrega previsões de um CSV.
+# No novo bloco 'Previsão', estamos usando as previsões do 'modelo_artefatos'.
+# Mantenho esta função caso ela seja usada em outras partes do dashboard que não foram alteradas.
 @st.cache_data
 def carregar_previsoes():
     """Carrega as previsões futuras do modelo."""
@@ -84,42 +87,54 @@ def carregar_documentacao_modelo():
 @st.cache_resource
 def carregar_modelo():
     """Carrega o modelo treinado e seus artefatos."""
-    try:
-        # Definir valores de fallback para o caso de erro no carregamento
-        metricas_fallback = {
-            'metricas': {
-                'rmse_geral': 6.83, 
-                'mae_geral': 4.79, 
-                'mape_geral': 7.83, 
-                'r2_geral': 0.8610
-            },
-            'previsoes': {
-                'datas': pd.date_range(start='2025-05-13', periods=30).tolist(),
-                'valores': [
-                    61.54, 61.78, 62.05, 62.31, 62.58, 62.84, 63.09, 63.32, 
-                    63.52, 63.67, 63.67, 63.52, 63.24, 62.87, 62.45, 62.01, 
-                    61.58, 61.19, 60.87, 60.63, 60.49, 60.45, 60.52, 60.68, 
-                    60.92, 61.23, 61.58, 61.96, 62.35, 62.73
+    # Definir valores de fallback para o caso de erro no carregamento
+    # Incluindo 'intervalos_confianca' para ser robusto
+    metricas_fallback = {
+        'metricas': {
+            'rmse_geral': 6.83,
+            'mae_geral': 4.79,
+            'mape_geral': 7.83,
+            'r2_geral': 0.8610
+        },
+        'previsoes': {
+            'datas': pd.date_range(start='2025-05-13', periods=30).strftime('%Y-%m-%d').tolist(), # Formatar para string
+            'valores': [
+                61.54, 61.78, 62.05, 62.31, 62.58, 62.84, 63.09, 63.32,
+                63.52, 63.67, 63.67, 63.52, 63.24, 62.87, 62.45, 62.01,
+                61.58, 61.19, 60.87, 60.63, 60.49, 60.45, 60.52, 60.68,
+                60.92, 61.23, 61.58, 61.96, 62.35, 62.73
+            ],
+            'intervalos_confianca': {
+                'superior': [
+                    63.54, 63.78, 64.05, 64.31, 64.58, 64.84, 65.09, 65.32,
+                    65.52, 65.67, 65.67, 65.52, 65.24, 64.87, 64.45, 64.01,
+                    63.58, 63.19, 62.87, 62.63, 62.49, 62.45, 62.52, 62.68,
+                    62.92, 63.23, 63.58, 63.96, 64.35, 64.73
+                ],
+                'inferior': [
+                    59.54, 59.78, 60.05, 60.31, 60.58, 60.84, 61.09, 61.32,
+                    61.52, 61.67, 61.67, 61.52, 61.24, 60.87, 60.45, 60.01,
+                    59.58, 59.19, 58.87, 58.63, 58.49, 58.45, 58.52, 58.68,
+                    58.92, 59.23, 59.58, 59.96, 60.35, 60.73
                 ]
             }
         }
-        
-        # Tentar carregar o modelo com TensorFlow
-        import tensorflow as tf
-        from tensorflow.keras.models import load_model
-        
+    }
+
+    try:
         # Definir função personalizada para resolver o problema do 'mse'
         def mse(y_true, y_pred):
             return tf.reduce_mean(tf.square(y_true - y_pred), axis=-1)
-        
+
         # Carregar o modelo com custom_objects
-        modelo = load_model('modelo/modelo_lstm.h5', 
+        modelo = load_model('modelo/modelo_lstm.h5',
                            custom_objects={'mse': mse})
-        
+
         scaler_X = joblib.load('modelo/scaler_X.pkl')
         scaler_y = joblib.load('modelo/scaler_y.pkl')
+        # É aqui que o arquivo parametros.pkl precisa ter a estrutura esperada
         parametros = joblib.load('modelo/parametros.pkl')
-        
+
         return {
             'modelo': modelo,
             'scaler_X': scaler_X,
@@ -127,7 +142,7 @@ def carregar_modelo():
             'parametros': parametros
         }
     except Exception as e:
-        st.error(f"Erro ao carregar o modelo: {e}")
+        st.error(f"Erro ao carregar o modelo ou artefatos: {e}. Exibindo dados de fallback.")
         return {
             'modelo': None,
             'scaler_X': None,
@@ -139,7 +154,7 @@ def carregar_modelo():
 def criar_grafico_serie_temporal(df, df_eventos=None, df_previsoes=None, periodo_inicio=None, periodo_fim=None, mostrar_previsoes=True):
     """
     Cria um gráfico de série temporal do preço do petróleo com eventos importantes e previsões.
-    
+
     Args:
         df: DataFrame com os dados do petróleo.
         df_eventos: DataFrame com os eventos importantes.
@@ -153,10 +168,10 @@ def criar_grafico_serie_temporal(df, df_eventos=None, df_previsoes=None, periodo
         df_filtrado = df[(df['Data'] >= periodo_inicio) & (df['Data'] <= periodo_fim)]
     else:
         df_filtrado = df
-    
+
     # Criar o gráfico com Plotly
     fig = go.Figure()
-    
+
     # Adicionar a linha de preço
     fig.add_trace(
         go.Scatter(
@@ -167,7 +182,7 @@ def criar_grafico_serie_temporal(df, df_eventos=None, df_previsoes=None, periodo
             line=dict(color='#1f77b4', width=2)
         )
     )
-    
+
     # Adicionar previsões, se disponíveis e solicitadas
     if df_previsoes is not None and mostrar_previsoes:
         # Filtrar previsões pelo período, se aplicável
@@ -175,18 +190,22 @@ def criar_grafico_serie_temporal(df, df_eventos=None, df_previsoes=None, periodo
             df_previsoes_filtrado = df_previsoes[(df_previsoes['Data'] >= periodo_inicio) & (df_previsoes['Data'] <= periodo_fim)]
         else:
             df_previsoes_filtrado = df_previsoes
-        
+
         if len(df_previsoes_filtrado) > 0:
+            # Usar 'Previsão' para a nova estrutura do df_previsoes na página 'Previsão'
+            # Mas aqui, como essa função é geral, mantenho 'Preco_Previsto' para compatibilidade com carregar_previsoes()
+            previsao_col = 'Preco_Previsto' if 'Preco_Previsto' in df_previsoes_filtrado.columns else 'Previsão'
+
             fig.add_trace(
                 go.Scatter(
                     x=df_previsoes_filtrado['Data'],
-                    y=df_previsoes_filtrado['Preco_Previsto'],
+                    y=df_previsoes_filtrado[previsao_col],
                     mode='lines',
                     name='Previsão (USD)',
                     line=dict(color='#ff7f0e', width=2, dash='dash')
                 )
             )
-            
+
             # Adicionar linha vertical para separar dados históricos e previsões
             ultima_data_historica = df['Data'].max()
             fig.add_vline(
@@ -194,14 +213,14 @@ def criar_grafico_serie_temporal(df, df_eventos=None, df_previsoes=None, periodo
                 line=dict(color='gray', width=1, dash='dash'),
                 opacity=0.7
             )
-    
+
     # Adicionar eventos importantes, se disponíveis
     if df_eventos is not None:
         eventos_no_periodo = df_eventos
         if periodo_inicio and periodo_fim:
-            eventos_no_periodo = df_eventos[(df_eventos['data'] >= periodo_inicio) & 
+            eventos_no_periodo = df_eventos[(df_eventos['data'] >= periodo_inicio) &
                                            (df_eventos['data'] <= periodo_fim)]
-        
+
         for i, evento in eventos_no_periodo.iterrows():
             # Encontrar o preço na data do evento ou na data mais próxima
             if evento['data'] in df_filtrado['Data'].values:
@@ -210,14 +229,14 @@ def criar_grafico_serie_temporal(df, df_eventos=None, df_previsoes=None, periodo
                 # Encontrar a data mais próxima
                 idx = (df_filtrado['Data'] - evento['data']).abs().idxmin()
                 preco = df_filtrado.loc[idx, 'Preco']
-            
+
             # Adicionar linha vertical para o evento
             fig.add_vline(
                 x=evento['data'],
                 line=dict(color='red', width=1, dash='dash'),
                 opacity=0.7
             )
-            
+
             # Adicionar anotação para o evento
             fig.add_annotation(
                 x=evento['data'],
@@ -236,7 +255,7 @@ def criar_grafico_serie_temporal(df, df_eventos=None, df_previsoes=None, periodo
                 borderpad=4,
                 font=dict(size=10)
             )
-    
+
     # Configurar o layout do gráfico
     fig.update_layout(
         title='Preço do Petróleo Brent ao Longo do Tempo',
@@ -247,7 +266,7 @@ def criar_grafico_serie_temporal(df, df_eventos=None, df_previsoes=None, periodo
         margin=dict(l=40, r=40, t=60, b=40),
         height=500
     )
-    
+
     return fig
 
 # Função para criar gráfico de volatilidade por década
@@ -255,7 +274,7 @@ def criar_grafico_volatilidade_decada(df):
     """Cria um gráfico de volatilidade por década."""
     # Calcular a volatilidade por década
     volatilidade_decada = df.groupby('Decada')['Variacao'].std().reset_index()
-    
+
     # Criar o gráfico com Plotly
     fig = px.bar(
         volatilidade_decada,
@@ -266,7 +285,7 @@ def criar_grafico_volatilidade_decada(df):
         color='Variacao',
         color_continuous_scale='Viridis'
     )
-    
+
     # Configurar o layout do gráfico
     fig.update_layout(
         xaxis=dict(tickmode='array', tickvals=volatilidade_decada['Decada'], ticktext=[str(int(d)) for d in volatilidade_decada['Decada']]),
@@ -274,7 +293,7 @@ def criar_grafico_volatilidade_decada(df):
         coloraxis_showscale=False,
         height=400
     )
-    
+
     return fig
 
 # Função para criar gráfico de sazonalidade mensal
@@ -282,7 +301,7 @@ def criar_grafico_sazonalidade_mensal(df):
     """Cria um gráfico de sazonalidade mensal dos preços."""
     # Calcular a média mensal
     sazonalidade_mensal = df.groupby('Mes')['Preco'].mean().reset_index()
-    
+
     # Criar o gráfico com Plotly
     fig = px.line(
         sazonalidade_mensal,
@@ -292,15 +311,15 @@ def criar_grafico_sazonalidade_mensal(df):
         labels={'Mes': 'Mês', 'Preco': 'Preço Médio (USD)'},
         title='Sazonalidade Mensal do Preço do Petróleo Brent'
     )
-    
+
     # Configurar o layout do gráfico
     fig.update_layout(
-        xaxis=dict(tickmode='array', tickvals=list(range(1, 13)), 
+        xaxis=dict(tickmode='array', tickvals=list(range(1, 13)),
                   ticktext=['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']),
         yaxis_title='Preço Médio (USD)',
         height=400
     )
-    
+
     return fig
 
 # Função para criar gráfico de distribuição de preços por período
@@ -311,7 +330,7 @@ def criar_grafico_distribuicao_precos(df, periodo_inicio=None, periodo_fim=None)
         df_filtrado = df[(df['Data'] >= periodo_inicio) & (df['Data'] <= periodo_fim)]
     else:
         df_filtrado = df
-    
+
     # Criar o gráfico com Plotly
     fig = px.histogram(
         df_filtrado,
@@ -321,7 +340,7 @@ def criar_grafico_distribuicao_precos(df, periodo_inicio=None, periodo_fim=None)
         title='Distribuição dos Preços do Petróleo Brent',
         opacity=0.8
     )
-    
+
     # Adicionar linha de densidade
     fig.add_trace(
         go.Scatter(
@@ -332,7 +351,7 @@ def criar_grafico_distribuicao_precos(df, periodo_inicio=None, periodo_fim=None)
             line=dict(color='red', width=2)
         )
     )
-    
+
     # Configurar o layout do gráfico
     fig.update_layout(
         xaxis_title='Preço (USD)',
@@ -340,7 +359,7 @@ def criar_grafico_distribuicao_precos(df, periodo_inicio=None, periodo_fim=None)
         bargap=0.1,
         height=400
     )
-    
+
     return fig
 
 # Função para criar gráfico de variação percentual
@@ -351,10 +370,10 @@ def criar_grafico_variacao_percentual(df, periodo_inicio=None, periodo_fim=None)
         df_filtrado = df[(df['Data'] >= periodo_inicio) & (df['Data'] <= periodo_fim)]
     else:
         df_filtrado = df
-    
+
     # Criar o gráfico com Plotly
     fig = go.Figure()
-    
+
     # Adicionar a linha de variação percentual
     fig.add_trace(
         go.Scatter(
@@ -365,14 +384,14 @@ def criar_grafico_variacao_percentual(df, periodo_inicio=None, periodo_fim=None)
             line=dict(color='#ff7f0e', width=1.5)
         )
     )
-    
+
     # Adicionar linha horizontal em zero
     fig.add_hline(
         y=0,
         line=dict(color='black', width=1, dash='dash'),
         opacity=0.7
     )
-    
+
     # Configurar o layout do gráfico
     fig.update_layout(
         title='Variação Percentual Diária do Preço do Petróleo Brent',
@@ -381,7 +400,7 @@ def criar_grafico_variacao_percentual(df, periodo_inicio=None, periodo_fim=None)
         hovermode='x unified',
         height=400
     )
-    
+
     return fig
 
 # Função para calcular a variação absoluta
@@ -399,10 +418,10 @@ def criar_grafico_medias_moveis(df, periodo_inicio=None, periodo_fim=None):
         df_filtrado = df[(df['Data'] >= periodo_inicio) & (df['Data'] <= periodo_fim)]
     else:
         df_filtrado = df
-    
+
     # Criar o gráfico com Plotly
     fig = go.Figure()
-    
+
     # Adicionar a linha de preço
     fig.add_trace(
         go.Scatter(
@@ -413,7 +432,7 @@ def criar_grafico_medias_moveis(df, periodo_inicio=None, periodo_fim=None):
             line=dict(color='#1f77b4', width=1)
         )
     )
-    
+
     # Adicionar a linha de média móvel de 7 dias
     fig.add_trace(
         go.Scatter(
@@ -424,7 +443,7 @@ def criar_grafico_medias_moveis(df, periodo_inicio=None, periodo_fim=None):
             line=dict(color='#ff7f0e', width=2)
         )
     )
-    
+
     # Adicionar a linha de média móvel de 30 dias
     fig.add_trace(
         go.Scatter(
@@ -435,7 +454,7 @@ def criar_grafico_medias_moveis(df, periodo_inicio=None, periodo_fim=None):
             line=dict(color='#2ca02c', width=2)
         )
     )
-    
+
     # Configurar o layout do gráfico
     fig.update_layout(
         title='Preço do Petróleo Brent e Médias Móveis',
@@ -444,7 +463,7 @@ def criar_grafico_medias_moveis(df, periodo_inicio=None, periodo_fim=None):
         hovermode='x unified',
         height=500
     )
-    
+
     return fig
 
 # Função para criar gráfico de preço médio anual
@@ -452,7 +471,7 @@ def criar_grafico_preco_medio_anual(df):
     """Cria um gráfico de preço médio anual."""
     # Calcular o preço médio anual
     preco_anual = df.groupby('Ano')['Preco'].mean().reset_index()
-    
+
     # Criar o gráfico com Plotly
     fig = px.bar(
         preco_anual,
@@ -463,7 +482,7 @@ def criar_grafico_preco_medio_anual(df):
         color='Preco',
         color_continuous_scale='Viridis'
     )
-    
+
     # Configurar o layout do gráfico
     fig.update_layout(
         xaxis_title='Ano',
@@ -471,7 +490,7 @@ def criar_grafico_preco_medio_anual(df):
         coloraxis_showscale=False,
         height=400
     )
-    
+
     return fig
 
 # Função para criar gráfico de previsão vs. real
@@ -486,38 +505,38 @@ def criar_grafico_previsao_vs_real(df_metricas):
         title='Erro de Previsão (RMSE) por Horizonte',
         markers=True
     )
-    
+
     # Configurar o layout do gráfico
     fig.update_layout(
         xaxis_title='Horizonte de Previsão (dias)',
         yaxis_title='RMSE (USD)',
         height=400
     )
-    
+
     return fig
 
 # Função para exibir os insights
 def exibir_insight(insight_md, numero_insight):
     """Exibe um insight específico do arquivo markdown."""
     import re
-    
+
     # Padrão para encontrar os insights no markdown
     padrao = r'## Insight (\d+): (.*?)\n\n### Evidências:(.*?)### Implicações:(.*?)(?=\n\n## Insight|\Z)'
-    
+
     # Encontrar todos os insights
     insights = re.findall(padrao, insight_md, re.DOTALL)
-    
+
     if numero_insight <= len(insights):
         # Extrair o insight selecionado
         numero, titulo, evidencias, implicacoes = insights[numero_insight - 1]
-        
+
         # Exibir o insight
         st.subheader(f"Insight {numero}: {titulo}")
-        
+
         # Exibir as evidências
         st.markdown("#### Evidências:")
         st.markdown(evidencias.strip())
-        
+
         # Exibir as implicações
         st.markdown("#### Implicações:")
         st.markdown(implicacoes.strip())
@@ -541,27 +560,27 @@ def main():
     df = carregar_dados()
     df_eventos = carregar_eventos()
     insights_md = carregar_insights()
-    df_previsoes = carregar_previsoes()
+    df_previsoes_csv = carregar_previsoes() # Renomeado para evitar conflito com df_previsoes do modelo
     doc_modelo = carregar_documentacao_modelo()
     df_metricas = carregar_metricas_modelo()
-    modelo_artefatos = carregar_modelo()
-    
-    if df is None or df_eventos is None or insights_md is None or df_previsoes is None:
-        st.error("Não foi possível carregar todos os dados necessários.")
+    modelo_artefatos = carregar_modelo() # Retorna o modelo e os parâmetros/fallback
+
+    if df is None or df_eventos is None or insights_md is None: # df_previsoes_csv pode ser None se não for usado na Overview
+        st.error("Não foi possível carregar alguns dados essenciais.")
         return
-    
+
     # Sidebar
     st.sidebar.title("Navegação")
     pagina = st.sidebar.radio(
         "Selecione uma página:",
         ["Visão Geral", "Análise Histórica", "Insights", "Previsão", "Documentação do Modelo"]
     )
-    
+
     # Filtro de período na sidebar (aplicável a todas as páginas)
     st.sidebar.title("Filtros")
     min_date = df['Data'].min().date()
     max_date = df['Data'].max().date()
-    
+
     # Opções predefinidas de períodos
     periodos_predefinidos = {
         "Todo o período": (min_date, max_date),
@@ -572,19 +591,19 @@ def main():
         "Década de 2010": (datetime(2010, 1, 1).date(), datetime(2019, 12, 31).date()),
         "Década de 2020": (datetime(2020, 1, 1).date(), max_date)
     }
-    
+
     periodo_selecionado = st.sidebar.selectbox(
         "Período predefinido:",
         list(periodos_predefinidos.keys()),
         index=0
     )
-    
+
     # Obter as datas do período selecionado
     data_inicio_padrao, data_fim_padrao = periodos_predefinidos[periodo_selecionado]
-    
+
     # Permitir ajuste manual das datas
     personalizar_periodo = st.sidebar.checkbox("Personalizar período")
-    
+
     if personalizar_periodo:
         data_inicio = st.sidebar.date_input(
             "Data de início:",
@@ -592,7 +611,7 @@ def main():
             min_value=min_date,
             max_value=max_date
         )
-        
+
         data_fim = st.sidebar.date_input(
             "Data de fim:",
             data_fim_padrao,
@@ -602,91 +621,102 @@ def main():
     else:
         data_inicio = data_inicio_padrao
         data_fim = data_fim_padrao
-    
+
     # Converter as datas para datetime
     periodo_inicio = pd.to_datetime(data_inicio)
     periodo_fim = pd.to_datetime(data_fim)
-    
+
     # Filtrar os dados pelo período selecionado
     df_filtrado = df[(df['Data'] >= periodo_inicio) & (df['Data'] <= periodo_fim)]
-    
+
     # Garantir que a coluna Variacao_Abs exista
     df_filtrado = calcular_variacao_abs(df_filtrado)
-    df = calcular_variacao_abs(df)
-    
+    df = calcular_variacao_abs(df) # Certifica que a coluna existe no df original também
+
     # Exibir estatísticas básicas na sidebar
     st.sidebar.title("Estatísticas do Período")
     st.sidebar.metric("Preço Médio", f"${df_filtrado['Preco'].mean():.2f}")
     st.sidebar.metric("Preço Mínimo", f"${df_filtrado['Preco'].min():.2f}")
     st.sidebar.metric("Preço Máximo", f"${df_filtrado['Preco'].max():.2f}")
     st.sidebar.metric("Volatilidade", f"{df_filtrado['Variacao'].std():.2f}%")
-    
+
     # Páginas do dashboard
     if pagina == "Visão Geral":
         # Título da página
         st.title("🛢️ Dashboard do Preço do Petróleo Brent")
         st.markdown("### Visão Geral do Mercado de Petróleo")
-        
+
         # Introdução
         st.markdown("""
-        Este dashboard apresenta uma análise detalhada do preço do petróleo Brent, um dos principais benchmarks 
-        para o preço internacional do petróleo. Os dados históricos abrangem o período de maio de 1987 até maio de 2025, 
+        Este dashboard apresenta uma análise detalhada do preço do petróleo Brent, um dos principais benchmarks
+        para o preço internacional do petróleo. Os dados históricos abrangem o período de maio de 1987 até maio de 2025,
         permitindo uma visão abrangente das tendências, ciclos e eventos que influenciaram o mercado global de petróleo.
         """)
-        
+
         # Métricas principais
         col1, col2, col3, col4 = st.columns(4)
         with col1:
             st.metric("Período Analisado", f"{len(df_filtrado)} dias")
         with col2:
-            variacao_periodo = ((df_filtrado['Preco'].iloc[-1] / df_filtrado['Preco'].iloc[0]) - 1) * 100
-            st.metric("Variação no Período", f"{variacao_periodo:.2f}%")
+            # Proteção para evitar erro se df_filtrado for muito pequeno
+            if len(df_filtrado) > 1:
+                variacao_periodo = ((df_filtrado['Preco'].iloc[-1] / df_filtrado['Preco'].iloc[0]) - 1) * 100
+                st.metric("Variação no Período", f"{variacao_periodo:.2f}%")
+            else:
+                st.metric("Variação no Período", "N/A")
         with col3:
             st.metric("Preço Atual", f"${df['Preco'].iloc[-1]:.2f}")
         with col4:
-            variacao_recente = ((df['Preco'].iloc[-1] / df['Preco'].iloc[-30]) - 1) * 100
-            st.metric("Variação (30 dias)", f"{variacao_recente:.2f}%")
-        
+            # Proteção para evitar erro se df for muito pequeno para 30 dias
+            if len(df) >= 30:
+                variacao_recente = ((df['Preco'].iloc[-1] / df['Preco'].iloc[-30]) - 1) * 100
+                st.metric("Variação (30 dias)", f"{variacao_recente:.2f}%")
+            else:
+                st.metric("Variação (30 dias)", "N/A")
+
         # Gráfico principal - Série temporal com eventos
         mostrar_previsoes = st.checkbox("Mostrar previsões futuras", value=True)
-        st.plotly_chart(criar_grafico_serie_temporal(df, df_eventos, df_previsoes, periodo_inicio, periodo_fim, mostrar_previsoes), use_container_width=True)
-        
+        # Passa df_previsoes_csv para a função geral, se ela ainda for usada para esse gráfico
+        st.plotly_chart(criar_grafico_serie_temporal(df, df_eventos, df_previsoes_csv, periodo_inicio, periodo_fim, mostrar_previsoes), use_container_width=True)
+
         # Gráficos secundários
         col1, col2 = st.columns(2)
-        
+
         with col1:
             st.plotly_chart(criar_grafico_preco_medio_anual(df), use_container_width=True)
-        
+
         with col2:
             st.plotly_chart(criar_grafico_volatilidade_decada(df), use_container_width=True)
-        
+
         # Resumo dos insights
         st.markdown("### Principais Insights")
         st.markdown("""
         Nossa análise detalhada revelou cinco insights principais sobre o comportamento do preço do petróleo Brent:
-        
+
         1. **Conflitos Geopolíticos no Oriente Médio** causam os maiores choques de curto prazo nos preços
         2. **Crises Econômicas Globais** provocam quedas prolongadas nos preços
         3. **A Volatilidade dos Preços Aumentou Significativamente na Década de 2020**
         4. **Existe um Padrão Sazonal Consistente** nos preços do petróleo
         5. **Períodos de Boom de Commodities** apresentam características distintas e previsíveis
-        
+
         Para explorar cada insight em detalhes, acesse a página "Insights" no menu lateral.
         """)
-        
+
         # Resumo do modelo de previsão
         st.markdown("### Modelo de Previsão")
+        # Acessa as métricas de forma segura usando .get()
+        metricas_overview = modelo_artefatos.get('parametros', {}).get('metricas', {})
         st.markdown(f"""
         Nosso modelo de Machine Learning para previsão do preço do petróleo Brent apresenta as seguintes métricas de performance:
-        
-        - **RMSE (Erro Quadrático Médio)**: ${modelo_artefatos['parametros']['metricas']['rmse_geral']:.2f}
-        - **MAE (Erro Absoluto Médio)**: ${modelo_artefatos['parametros']['metricas']['mae_geral']:.2f}
-        - **MAPE (Erro Percentual Absoluto Médio)**: {modelo_artefatos['parametros']['metricas']['mape_geral']:.2f}%
-        - **R² (Coeficiente de Determinação)**: {modelo_artefatos['parametros']['metricas']['r2_geral']:.4f}
-        
+
+        - **RMSE (Erro Quadrático Médio)**: ${metricas_overview.get('rmse_geral', 0.0):.2f}
+        - **MAE (Erro Absoluto Médio)**: ${metricas_overview.get('mae_geral', 0.0):.2f}
+        - **MAPE (Erro Percentual Absoluto Médio)**: {metricas_overview.get('mape_geral', 0.0):.2f}%
+        - **R² (Coeficiente de Determinação)**: {metricas_overview.get('r2_geral', 0.0):.4f}
+
         Para explorar as previsões em detalhes, acesse a página "Previsão" no menu lateral.
         """)
-    
+
     elif pagina == "Análise Histórica":
         # Título da página
         st.title("📊 Análise Histórica do Preço do Petróleo Brent")
@@ -699,65 +729,65 @@ def main():
         height=720,
         scrolling=True
     )
-        
+
         # Gráfico principal - Série temporal com eventos
         mostrar_previsoes = st.checkbox("Mostrar previsões futuras", value=False)
-        st.plotly_chart(criar_grafico_serie_temporal(df, df_eventos, df_previsoes, periodo_inicio, periodo_fim, mostrar_previsoes), use_container_width=True)
-        
+        st.plotly_chart(criar_grafico_serie_temporal(df, df_eventos, df_previsoes_csv, periodo_inicio, periodo_fim, mostrar_previsoes), use_container_width=True)
+
         # Tabs para diferentes análises
         tab1, tab2, tab3, tab4 = st.tabs(["Distribuição", "Variação", "Médias Móveis", "Sazonalidade"])
-        
+
         with tab1:
             st.plotly_chart(criar_grafico_distribuicao_precos(df, periodo_inicio, periodo_fim), use_container_width=True)
-            
+
             # Estatísticas descritivas
             st.markdown("### Estatísticas Descritivas")
             st.dataframe(df_filtrado['Preco'].describe().reset_index().rename(columns={'index': 'Estatística', 'Preco': 'Valor'}))
-        
+
         with tab2:
             st.plotly_chart(criar_grafico_variacao_percentual(df, periodo_inicio, periodo_fim), use_container_width=True)
-            
+
             # Maiores variações
             st.markdown("### Maiores Variações no Período")
             maiores_variacoes = df_filtrado.nlargest(5, 'Variacao_Abs')[['Data', 'Preco', 'Variacao']]
             maiores_variacoes['Data'] = maiores_variacoes['Data'].dt.strftime('%d/%m/%Y')
             st.dataframe(maiores_variacoes)
-        
+
         with tab3:
             st.plotly_chart(criar_grafico_medias_moveis(df, periodo_inicio, periodo_fim), use_container_width=True)
-            
+
             # Explicação sobre médias móveis
             st.markdown("""
             ### Interpretação das Médias Móveis
-            
+
             - **Média Móvel de 7 dias**: Captura tendências de curto prazo, útil para identificar reversões recentes
             - **Média Móvel de 30 dias**: Revela tendências de médio prazo, filtrando ruídos diários
-            
-            Quando a média móvel de curto prazo cruza acima da média móvel de longo prazo, isso geralmente indica 
+
+            Quando a média móvel de curto prazo cruza acima da média móvel de longo prazo, isso geralmente indica
             um sinal de alta (Golden Cross). O inverso (Death Cross) pode indicar tendência de queda.
             """)
-        
+
         with tab4:
             st.plotly_chart(criar_grafico_sazonalidade_mensal(df), use_container_width=True)
-            
+
             # Análise de sazonalidade
             st.markdown("""
             ### Padrão Sazonal dos Preços
-            
+
             Os preços do petróleo Brent apresentam um padrão sazonal consistente ao longo dos anos:
-            
+
             - **Preços mais altos**: Abril a Agosto (média de $51,65)
             - **Preços mais baixos**: Novembro a Fevereiro (média de $49,02)
             - **Diferença média**: 7,9% entre o pico (Julho) e o vale (Dezembro)
-            
-            Este padrão se mantém consistente mesmo em diferentes ciclos econômicos e pode ser explicado por fatores 
+
+            Este padrão se mantém consistente mesmo em diferentes ciclos econômicos e pode ser explicado por fatores
             como a sazonalidade da demanda (maior no verão do hemisfério norte) e períodos de manutenção de refinarias.
             """)
-    
+
     elif pagina == "Insights":
         # Título da página
         st.title("💡 Insights sobre o Preço do Petróleo Brent")
-        
+
         # Seleção do insight
         insight_selecionado = st.selectbox(
             "Selecione um insight:",
@@ -767,18 +797,18 @@ def main():
              "Insight 4: Padrão Sazonal Consistente",
              "Insight 5: Características dos Booms de Commodities"]
         )
-        
+
         # Exibir o insight selecionado
         numero_insight = int(insight_selecionado.split(":")[0].replace("Insight ", ""))
         exibir_insight(insights_md, numero_insight)
-        
+
         # Gráficos relacionados ao insight selecionado
         st.markdown("### Visualizações Relacionadas")
-        
+
         if numero_insight == 1:  # Conflitos Geopolíticos
             # Filtrar eventos de conflitos
             eventos_conflitos = df_eventos[df_eventos['descricao'].str.contains('guerra|conflito|invasão|ataque', case=False)]
-            
+
             # Criar gráfico para períodos de conflitos específicos
             periodos_conflitos = {
                 "Guerra do Golfo": (datetime(1990, 7, 1), datetime(1991, 3, 1)),
@@ -786,41 +816,50 @@ def main():
                 "Primavera Árabe": (datetime(2011, 1, 1), datetime(2011, 12, 31)),
                 "Conflito Rússia-Ucrânia": (datetime(2022, 2, 1), datetime(2022, 6, 1))
             }
-            
+
             conflito_selecionado = st.selectbox(
                 "Selecione um conflito para análise detalhada:",
                 list(periodos_conflitos.keys())
             )
-            
+
             inicio_conflito, fim_conflito = periodos_conflitos[conflito_selecionado]
-            
+
             # Exibir gráfico do período do conflito
             st.plotly_chart(
                 criar_grafico_serie_temporal(
-                    df, 
-                    eventos_conflitos, 
+                    df,
+                    eventos_conflitos,
                     None,
-                    inicio_conflito, 
+                    inicio_conflito,
                     fim_conflito,
                     False
-                ), 
+                ),
                 use_container_width=True
             )
-            
+
             # Estatísticas do período
             df_periodo = df[(df['Data'] >= inicio_conflito) & (df['Data'] <= fim_conflito)]
-            
+
             col1, col2, col3 = st.columns(3)
             with col1:
-                preco_inicial = df_periodo['Preco'].iloc[0]
-                preco_final = df_periodo['Preco'].iloc[-1]
-                variacao = ((preco_final / preco_inicial) - 1) * 100
-                st.metric("Variação no Período", f"{variacao:.2f}%")
+                if not df_periodo.empty:
+                    preco_inicial = df_periodo['Preco'].iloc[0]
+                    preco_final = df_periodo['Preco'].iloc[-1]
+                    variacao = ((preco_final / preco_inicial) - 1) * 100
+                    st.metric("Variação no Período", f"{variacao:.2f}%")
+                else:
+                    st.metric("Variação no Período", "N/A")
             with col2:
-                st.metric("Preço Máximo", f"${df_periodo['Preco'].max():.2f}")
+                if not df_periodo.empty:
+                    st.metric("Preço Máximo", f"${df_periodo['Preco'].max():.2f}")
+                else:
+                    st.metric("Preço Máximo", "N/A")
             with col3:
-                st.metric("Volatilidade", f"{df_periodo['Variacao'].std():.2f}%")
-        
+                if not df_periodo.empty:
+                    st.metric("Volatilidade", f"{df_periodo['Variacao'].std():.2f}%")
+                else:
+                    st.metric("Volatilidade", "N/A")
+
         elif numero_insight == 2:  # Crises Econômicas
             # Períodos de crises econômicas
             periodos_crises = {
@@ -829,68 +868,77 @@ def main():
                 "Queda de 2014-2016": (datetime(2014, 6, 1), datetime(2016, 12, 31)),
                 "Pandemia COVID-19": (datetime(2020, 1, 1), datetime(2020, 12, 31))
             }
-            
+
             crise_selecionada = st.selectbox(
                 "Selecione uma crise econômica para análise detalhada:",
                 list(periodos_crises.keys())
             )
-            
+
             inicio_crise, fim_crise = periodos_crises[crise_selecionada]
-            
+
             # Exibir gráfico do período da crise
             st.plotly_chart(
                 criar_grafico_serie_temporal(
-                    df, 
-                    df_eventos, 
+                    df,
+                    df_eventos,
                     None,
-                    inicio_crise, 
+                    inicio_crise,
                     fim_crise,
                     False
-                ), 
+                ),
                 use_container_width=True
             )
-            
+
             # Estatísticas do período
             df_periodo = df[(df['Data'] >= inicio_crise) & (df['Data'] <= fim_crise)]
-            
+
             col1, col2, col3, col4 = st.columns(4)
             with col1:
-                preco_inicial = df_periodo['Preco'].iloc[0]
-                preco_final = df_periodo['Preco'].iloc[-1]
-                variacao = ((preco_final / preco_inicial) - 1) * 100
-                st.metric("Variação no Período", f"{variacao:.2f}%")
+                if not df_periodo.empty:
+                    preco_inicial = df_periodo['Preco'].iloc[0]
+                    preco_final = df_periodo['Preco'].iloc[-1]
+                    variacao = ((preco_final / preco_inicial) - 1) * 100
+                    st.metric("Variação no Período", f"{variacao:.2f}%")
+                else:
+                    st.metric("Variação no Período", "N/A")
             with col2:
-                st.metric("Preço Inicial", f"${preco_inicial:.2f}")
+                if not df_periodo.empty:
+                    st.metric("Preço Inicial", f"${df_periodo['Preco'].iloc[0]:.2f}")
+                else:
+                    st.metric("Preço Inicial", "N/A")
             with col3:
-                st.metric("Preço Final", f"${preco_final:.2f}")
+                if not df_periodo.empty:
+                    st.metric("Preço Final", f"${df_periodo['Preco'].iloc[-1]:.2f}")
+                else:
+                    st.metric("Preço Final", "N/A")
             with col4:
                 st.metric("Tempo de Recuperação", "2-3 anos em média")
-        
+
         elif numero_insight == 3:  # Volatilidade na Década de 2020
             # Exibir gráfico de volatilidade por década
             st.plotly_chart(criar_grafico_volatilidade_decada(df), use_container_width=True)
-            
+
             # Exibir as maiores variações diárias
             st.markdown("### Maiores Variações Diárias na História")
             maiores_variacoes = df.nlargest(10, 'Variacao_Abs')[['Data', 'Preco', 'Variacao']]
             maiores_variacoes['Data'] = maiores_variacoes['Data'].dt.strftime('%d/%m/%Y')
             st.dataframe(maiores_variacoes)
-            
+
             # Comparar a volatilidade de 2020 com outros períodos
             st.markdown("### Comparação da Volatilidade em Períodos Críticos")
-            
+
             periodos_volateis = {
                 "Guerra do Golfo (1990-1991)": df[(df['Data'] >= datetime(1990, 7, 1)) & (df['Data'] <= datetime(1991, 3, 1))]['Variacao'].std(),
                 "Crise Financeira (2008-2009)": df[(df['Data'] >= datetime(2008, 8, 1)) & (df['Data'] <= datetime(2009, 6, 30))]['Variacao'].std(),
                 "Pandemia COVID-19 (2020)": df[(df['Data'] >= datetime(2020, 1, 1)) & (df['Data'] <= datetime(2020, 12, 31))]['Variacao'].std(),
                 "Guerra Rússia-Ucrânia (2022)": df[(df['Data'] >= datetime(2022, 2, 1)) & (df['Data'] <= datetime(2022, 12, 31))]['Variacao'].std()
             }
-            
+
             df_volatilidade = pd.DataFrame({
                 'Período': list(periodos_volateis.keys()),
                 'Volatilidade (%)': list(periodos_volateis.values())
             })
-            
+
             fig = px.bar(
                 df_volatilidade,
                 x='Período',
@@ -899,29 +947,29 @@ def main():
                 color='Volatilidade (%)',
                 color_continuous_scale='Viridis'
             )
-            
+
             st.plotly_chart(fig, use_container_width=True)
-        
+
         elif numero_insight == 4:  # Padrão Sazonal
             # Exibir gráfico de sazonalidade mensal
             st.plotly_chart(criar_grafico_sazonalidade_mensal(df), use_container_width=True)
-            
+
             # Análise de sazonalidade por década
             st.markdown("### Sazonalidade por Década")
-            
+
             decada_selecionada = st.selectbox(
                 "Selecione uma década para análise de sazonalidade:",
                 ["1990", "2000", "2010", "2020"]
             )
-            
+
             # Filtrar dados da década selecionada
             inicio_decada = datetime(int(decada_selecionada), 1, 1)
             fim_decada = datetime(int(decada_selecionada) + 9, 12, 31)
             df_decada = df[(df['Data'] >= inicio_decada) & (df['Data'] <= fim_decada)]
-            
+
             # Calcular sazonalidade da década
             sazonalidade_decada = df_decada.groupby('Mes')['Preco'].mean().reset_index()
-            
+
             # Criar gráfico
             fig = px.line(
                 sazonalidade_decada,
@@ -931,91 +979,103 @@ def main():
                 labels={'Mes': 'Mês', 'Preco': 'Preço Médio (USD)'},
                 title=f'Sazonalidade Mensal na Década de {decada_selecionada}'
             )
-            
+
             fig.update_layout(
-                xaxis=dict(tickmode='array', tickvals=list(range(1, 13)), 
+                xaxis=dict(tickmode='array', tickvals=list(range(1, 13)),
                           ticktext=['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']),
                 yaxis_title='Preço Médio (USD)'
             )
-            
+
             st.plotly_chart(fig, use_container_width=True)
-            
+
             # Comparação com a sazonalidade geral
             st.markdown(f"""
             ### Comparação com o Padrão Geral
-            
-            Na década de {decada_selecionada}, o padrão sazonal 
-            {"se manteve consistente com" if decada_selecionada != "2020" else "apresentou algumas diferenças em relação a"} 
-            o padrão histórico geral. 
-            
+
+            Na década de {decada_selecionada}, o padrão sazonal
+            {"se manteve consistente com" if decada_selecionada != "2020" else "apresentou algumas diferenças em relação a"}
+            o padrão histórico geral.
+
             {"Os meses de verão no hemisfério norte continuaram apresentando preços mais elevados." if decada_selecionada != "2020" else "A pandemia de COVID-19 e outros eventos geopolíticos causaram distorções no padrão sazonal tradicional."}
             """)
-        
+
         elif numero_insight == 5:  # Booms de Commodities
             # Período do boom de commodities
             inicio_boom = datetime(2007, 1, 1)
             fim_boom = datetime(2008, 7, 31)
-            
+
             # Exibir gráfico do período do boom
             st.plotly_chart(
                 criar_grafico_serie_temporal(
-                    df, 
-                    df_eventos, 
+                    df,
+                    df_eventos,
                     None,
-                    inicio_boom, 
+                    inicio_boom,
                     fim_boom,
                     False
-                ), 
+                ),
                 use_container_width=True
             )
-            
+
             # Estatísticas do período
             df_boom = df[(df['Data'] >= inicio_boom) & (df['Data'] <= fim_boom)]
-            
+
             col1, col2, col3 = st.columns(3)
             with col1:
-                preco_inicial = df_boom['Preco'].iloc[0]
-                preco_final = df_boom['Preco'].iloc[-1]
-                variacao = ((preco_final / preco_inicial) - 1) * 100
-                st.metric("Variação no Período", f"{variacao:.2f}%")
+                if not df_boom.empty:
+                    preco_inicial = df_boom['Preco'].iloc[0]
+                    preco_final = df_boom['Preco'].iloc[-1]
+                    variacao = ((preco_final / preco_inicial) - 1) * 100
+                    st.metric("Variação no Período", f"{variacao:.2f}%")
+                else:
+                    st.metric("Variação no Período", "N/A")
             with col2:
-                st.metric("Preço Máximo", f"${df_boom['Preco'].max():.2f}")
+                if not df_boom.empty:
+                    st.metric("Preço Máximo", f"${df_boom['Preco'].max():.2f}")
+                else:
+                    st.metric("Preço Máximo", "N/A")
             with col3:
                 st.metric("Tempo até o Pico", "18 meses")
-            
+                # Se desejar calcular o tempo real, precisaríamos de mais lógica
+                # para encontrar a data do pico dentro do df_boom.
+
             # Características dos booms de commodities
             st.markdown("""
             ### Características dos Booms de Commodities
-            
+
             Os ciclos de boom de commodities apresentam características distintas:
-            
+
             1. **Crescimento econômico global sustentado** (>3% ao ano por pelo menos 3 anos) antes do início
             2. **Forte correlação** entre petróleo e outras commodities (ouro, cobre, grãos)
             3. **Fim abrupto** coincidindo com eventos macroeconômicos negativos
             4. **Duração média** de 18-24 meses até atingir o pico
             5. **Aumento médio** de 80-120% nos preços do início ao pico
             """)
-    
+
+    # --- INÍCIO DA PÁGINA 'PREVISÃO' UNIFICADA ---
     elif pagina == "Previsão":
         # Título da página
         st.title("🔮 Previsão do Preço do Petróleo Brent")
         st.markdown("### Modelo de Machine Learning para Previsão de Preços")
 
-        # Carregar as métricas e previsões pré-calculadas
-        modelo_artefatos = carregar_modelo()
+        # Acessar os parâmetros do modelo_artefatos de forma segura
+        # Se carregar_modelo falhou, 'parametros' será o 'metricas_fallback'
+        parametros_carregados = modelo_artefatos.get('parametros', {})
 
         # Exibir métricas de performance do modelo
         st.subheader("Performance do Modelo")
 
+        metricas = parametros_carregados.get('metricas', {})
+
         col1, col2, col3, col4 = st.columns(4)
         with col1:
-            st.metric("RMSE", f"${modelo_artefatos['parametros']['metricas']['rmse_geral']:.2f}")
+            st.metric("RMSE", f"${metricas.get('rmse_geral', 0.0):.2f}")
         with col2:
-            st.metric("MAE", f"${modelo_artefatos['parametros']['metricas']['mae_geral']:.2f}")
+            st.metric("MAE", f"${metricas.get('mae_geral', 0.0):.2f}")
         with col3:
-            st.metric("MAPE", f"{modelo_artefatos['parametros']['metricas']['mape_geral']:.2f}%")
+            st.metric("MAPE", f"{metricas.get('mape_geral', 0.0):.2f}%")
         with col4:
-            st.metric("R²", f"{modelo_artefatos['parametros']['metricas']['r2_geral']:.4f}")
+            st.metric("R²", f"{metricas.get('r2_geral', 0.0):.4f}")
 
         st.markdown("""
         ### Interpretação das Métricas
@@ -1032,93 +1092,120 @@ def main():
         # Exibir previsões
         st.subheader("Previsões para os Próximos 30 Dias")
 
-        # Criar DataFrame com as previsões
-        datas_previsao = modelo_artefatos['parametros']['previsoes']['datas']
-        valores_previsao = modelo_artefatos['parametros']['previsoes']['valores']
-        # É provável que 'intervalos_confianca' não exista se o carregamento do modelo falhar,
-        # causando um KeyError. Use a estrutura de fallback para garantir que existam.
-        limite_superior = modelo_artefatos['parametros']['previsoes'].get('intervalos_confianca', {}).get('superior', [])
-        limite_inferior = modelo_artefatos['parametros']['previsoes'].get('intervalos_confianca', {}).get('inferior', [])
+        # Acessar dados de previsão de forma segura
+        previsoes_data = parametros_carregados.get('previsoes', {})
+        datas_previsao = previsoes_data.get('datas', [])
+        valores_previsao = previsoes_data.get('valores', [])
+        intervalos_confianca = previsoes_data.get('intervalos_confianca', {})
+        limite_superior = intervalos_confianca.get('superior', [])
+        limite_inferior = intervalos_confianca.get('inferior', [])
 
-        df_previsoes = pd.DataFrame({
-            'Data': datas_previsao,
-            'Previsão': valores_previsao,
-            'Limite Superior': limite_superior,
-            'Limite Inferior': limite_inferior
-        })
-        # Se 'df_previsoes' for carregado via 'carregar_previsoes()', ele já terá essas colunas
-        # e a lógica acima pode ser desnecessária ou precisar de ajuste.
-        # Por simplicidade e consistência, usarei o df_previsoes do carregamento original.
-        df_previsoes_from_load = carregar_previsoes() # Recarregar para ter certeza se está sendo usado
+        df_previsoes_model = pd.DataFrame()
+        if datas_previsao and valores_previsao:
+            df_previsoes_model = pd.DataFrame({
+                'Data': datas_previsao,
+                'Previsão': valores_previsao
+            })
+            # Adicionar intervalos de confiança se existirem
+            if limite_superior and limite_inferior:
+                df_previsoes_model['Limite Superior'] = limite_superior
+                df_previsoes_model['Limite Inferior'] = limite_inferior
 
-        # Se df_previsoes_from_load tem 'Preco_Previsto' e não intervalos,
-        # você precisa decidir de onde virão os dados de previsão e CI.
-        # Assumindo que a função carregar_previsoes() já retorna a previsão base
-        # e que os intervalos são gerados dinamicamente ou vêm do modelo_artefatos.
-        if df_previsoes_from_load is not None and 'Preco_Previsto' in df_previsoes_from_load.columns:
-            # Usar df_previsoes_from_load se ele tiver os dados.
-            # Você precisará calcular os limites superior e inferior se não estiverem lá.
-            # Por enquanto, vou manter a lógica que você tem, mas pode precisar de ajuste.
-            pass # A lógica acima já cria df_previsoes com base em modelo_artefatos
+            df_previsoes_model['Data'] = pd.to_datetime(df_previsoes_model['Data']) # Garante que 'Data' é datetime
 
-        # Exibir gráfico de previsões
-        fig = go.Figure()
+        # Exibir gráfico de previsões (apenas se houver dados de previsão do modelo)
+        if not df_previsoes_model.empty:
+            fig = go.Figure()
 
-        # Adicionar linha de previsão
-        fig.add_trace(
-            go.Scatter(
-                x=df_previsoes['Data'],
-                y=df_previsoes['Previsão'],
-                mode='lines',
-                name='Previsão',
-                line=dict(color='#1f77b4', width=2)
-            )
-        )
+            # Adicionar dados históricos (se o df estiver disponível e tiver dados)
+            if df is not None and not df.empty:
+                df_ultimos_dias = df.sort_values('Data').tail(60) # Pega os últimos 60 dias de dados históricos
+                fig.add_trace(
+                    go.Scatter(
+                        x=df_ultimos_dias['Data'],
+                        y=df_ultimos_dias['Preco'],
+                        mode='lines',
+                        name='Histórico',
+                        line=dict(color='#1f77b4', width=2)
+                    )
+                )
 
-        # Adicionar intervalo de confiança (se existirem os dados)
-        if len(limite_superior) > 0 and len(limite_inferior) > 0:
+                # Adicionar linha vertical para separar histórico e previsão
+                fig.add_vline(
+                    x=df['Data'].max(),
+                    line=dict(color='gray', width=1, dash='dash'),
+                    opacity=0.7
+                )
+
+            # Adicionar linha de previsão do modelo
             fig.add_trace(
                 go.Scatter(
-                    x=df_previsoes['Data'].tolist() + df_previsoes['Data'].tolist()[::-1],
-                    y=df_previsoes['Limite Superior'].tolist() + df_previsoes['Limite Inferior'].tolist()[::-1],
-                    fill='toself',
-                    fillcolor='rgba(0,176,246,0.2)',
-                    line=dict(color='rgba(255,255,255,0)'),
-                    name='Intervalo de Confiança (95%)'
+                    x=df_previsoes_model['Data'],
+                    y=df_previsoes_model['Previsão'],
+                    mode='lines',
+                    name='Previsão',
+                    line=dict(color='#ff7f0e', width=2, dash='dash')
                 )
             )
 
-        # Configurar layout do gráfico
-        fig.update_layout(
-            title='Previsão do Preço do Petróleo Brent para os Próximos 30 Dias',
-            xaxis_title='Data',
-            yaxis_title='Preço (USD)',
-            hovermode='x unified',
-            height=500
-        )
+            # Adicionar intervalo de confiança (se as colunas existirem no df_previsoes_model)
+            if 'Limite Superior' in df_previsoes_model.columns and 'Limite Inferior' in df_previsoes_model.columns:
+                fig.add_trace(
+                    go.Scatter(
+                        x=df_previsoes_model['Data'].tolist() + df_previsoes_model['Data'].tolist()[::-1],
+                        y=(df_previsoes_model['Limite Superior']).tolist() + (df_previsoes_model['Limite Inferior']).tolist()[::-1],
+                        fill='toself',
+                        fillcolor='rgba(255, 127, 14, 0.2)',
+                        line=dict(color='rgba(255, 127, 14, 0)'),
+                        name='Intervalo de Confiança (95%)'
+                    )
+                )
 
-        st.plotly_chart(fig, use_container_width=True)
+            # Configurar layout do gráfico
+            fig.update_layout(
+                title='Previsão do Preço do Petróleo Brent para os Próximos 30 Dias',
+                xaxis_title='Data',
+                yaxis_title='Preço (USD)',
+                hovermode='x unified',
+                legend=dict(orientation='h', yanchor='bottom', y=1.02, xanchor='right', x=1),
+                height=500
+            )
 
-        # Exibir tabela de previsões
-        st.subheader("Tabela de Previsões")
+            st.plotly_chart(fig, use_container_width=True)
 
-        # Formatar DataFrame para exibição
-        df_previsoes_display = df_previsoes.copy()
-        df_previsoes_display['Data'] = df_previsoes_display['Data'].dt.strftime('%d/%m/%Y')
-        df_previsoes_display['Previsão'] = df_previsoes_display['Previsão'].apply(lambda x: f"${x:.2f}")
-        if 'Limite Superior' in df_previsoes_display.columns: # Verificar se as colunas existem antes de formatar
-             df_previsoes_display['Limite Superior'] = df_previsoes_display['Limite Superior'].apply(lambda x: f"${x:.2f}")
-             df_previsoes_display['Limite Inferior'] = df_previsoes_display['Limite Inferior'].apply(lambda x: f"${x:.2f}")
+            # Exibir tabela de previsões
+            st.subheader("Tabela de Previsões")
 
-        st.dataframe(df_previsoes_display)
+            # Formatar DataFrame para exibição
+            df_previsoes_display_table = df_previsoes_model.copy()
+            df_previsoes_display_table['Data'] = df_previsoes_display_table['Data'].dt.strftime('%d/%m/%Y')
+            df_previsoes_display_table['Previsão'] = df_previsoes_display_table['Previsão'].apply(lambda x: f"${x:.2f}")
+            if 'Limite Superior' in df_previsoes_display_table.columns:
+                 df_previsoes_display_table['Limite Superior'] = df_previsoes_display_table['Limite Superior'].apply(lambda x: f"${x:.2f}")
+                 df_previsoes_display_table['Limite Inferior'] = df_previsoes_display_table['Limite Inferior'].apply(lambda x: f"${x:.2f}")
+
+            st.dataframe(df_previsoes_display_table)
+        else:
+            st.warning("Não foi possível gerar as previsões. Verifique se o modelo e seus artefatos foram carregados corretamente ou se os dados de previsão estão completos no 'parametros.pkl'.")
+
 
         # Título acima do link
         st.subheader("Notebook utilizado inicialmente como teste de previsão")
-
         st.markdown(
-            '<a href="https://github.com/marloncabral/TechChallenge/blob/main/Tech_Challenge_4_Análise_Petróleo_P_Github.ipynb" target="_blank">🔗 Acesse o notebook completo no GitHub</a>',
-            unsafe_allow_html=True
-        )
+        '<a href="https://github.com/marloncabral/TechChallenge/blob/main/Tech_Challenge_4_Análise_Petróleo_P_Github.ipynb" target="_blank">🔗 Acesse o notebook completo no GitHub</a>',
+        unsafe_allow_html=True
+)
+    # --- FIM DA PÁGINA 'PREVISÃO' UNIFICADA ---
+
+    elif pagina == "Documentação do Modelo":
+        # Título da página
+        st.title("📄 Documentação do Modelo de Previsão")
+
+        # Exibir a documentação do modelo
+        if doc_modelo:
+            st.markdown(doc_modelo)
+        else:
+            st.warning("A documentação do modelo não pôde ser carregada.")
 
 # Executar o dashboard
 if __name__ == "__main__":
