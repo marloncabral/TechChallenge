@@ -324,11 +324,3 @@ projeto_petroleo/
 Este plano de deploy fornece um roteiro completo para colocar em produção o dashboard interativo e o modelo de previsão do preço do petróleo Brent. A abordagem em fases permite uma implementação gradual, começando com um MVP no Streamlit Cloud e evoluindo para uma solução corporativa robusta conforme necessário.
 
 A solução proposta equilibra facilidade de implementação, custo e escalabilidade, permitindo que o cliente obtenha valor rapidamente enquanto mantém a flexibilidade para expansões futuras.
-
-        # Título acima do link
-        st.subheader("Notebook utilizado inicialmente como teste de previsão")
-
-        st.markdown(
-        '<a href="(https://github.com/marloncabral/TechChallenge/blob/main/documentacao/plano_deploy.md)" target="_blank">🔗 Acesse o notebook completo no GitHub</a>',
-        unsafe_allow_html=True
-
