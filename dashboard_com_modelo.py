@@ -1201,14 +1201,6 @@ def main():
         # Exibir a documentação do modelo
         st.markdown(doc_modelo)
 
-    elif pagina == "Deploy":
-        # Título da página
-        st.title("📄 Plano de Deploy")
-        
-        # Exibir a documentação do modelo
-        st.markdown(plano_deploy)
-
-
 # Executar o dashboard
 if __name__ == "__main__":
     main()
