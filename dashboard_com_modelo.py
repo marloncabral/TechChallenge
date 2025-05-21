@@ -1190,7 +1190,7 @@ def main():
         st.subheader("Notebook utilizado inicialmente como teste de previsão")
 
         st.markdown(
-        '<a href="https://github.com/marloncabral/TechChallenge/blob/main/tech_challenge_4_analise_petroleo_p_Github.ipynb" target="_blank">🔗 Acesse o notebook completo no GitHub</a>',
+        '<a href="https://github.com/marloncabral/TechChallenge/blob/main/Tech_Challenge_4_Análise_Petróleo_P_Github.ipynb" target="_blank">🔗 Acesse o notebook completo no GitHub</a>',
         unsafe_allow_html=True
 )
     
